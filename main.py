@@ -11,6 +11,7 @@ from tkinter import *
 from tkinter import messagebox
 import random
 import pyperclip
+import json
 
 
 def pass_manager():
@@ -92,30 +93,66 @@ def pass_manager():
         password_input.insert(0, password)
         pyperclip.copy(password)
 
+    # ---------------------------- SEARCH FOR PASSWORD ---------------------- #
+    def search():
+        website = website_input.get().title()
+        try:
+            with open("passwords.json", "r") as pass_file:
+                entry = json.load(pass_file)
+                try:
+                    if entry[website]:
+                        messagebox.showinfo(
+                            title=website,
+                            message=f"Email: {entry[website]['email']}\n\n"
+                            f"Password: {entry[website]['password']}\n\n"
+                            "Password has been copied to your clipboard.",
+                        )
+                        pyperclip.copy(entry[website]["password"])
+                except KeyError:
+                    messagebox.showwarning(
+                        title="Error",
+                        message=f"No Data for {website} found.",
+                    )
+        except FileNotFoundError:
+            messagebox.showwarning(
+                title="Error", message="You have no saved passwords"
+            )
+
     # ---------------------------- SAVE PASSWORD ---------------------------- #
+    def write_to_file(data_to_pass):
+        with open("passwords.json", "w") as pass_file:
+            json.dump(data_to_pass, pass_file, indent=4)
+
     def save():
-        with open("passwords.txt", "a") as pass_file:
-            website = website_input.get()
-            email = email_input.get()
-            password = password_input.get()
 
-            if len(website) < 1 or len(password) < 0:
-                messagebox.showwarning(
-                    title="Missed Fields",
-                    message="Please double check any missed fields.",
-                )
+        website = website_input.get().title()
+        email = email_input.get()
+        password = password_input.get()
+        new_data = {
+            website: {
+                "email": email,
+                "password": password,
+            }
+        }
+
+        if len(website) < 1 or len(password) < 0:
+            messagebox.showwarning(
+                title="Missed Fields",
+                message="Please double check any missed fields.",
+            )
+        else:
+            try:
+                with open("passwords.json", "r") as pass_file:
+                    entry = json.load(pass_file)
+            except FileNotFoundError:
+                write_to_file(new_data)
             else:
-                is_ok = messagebox.askokcancel(
-                    title=website,
-                    message=f"These are the details entered:\nEmail: {email}\n"
-                    f"Password: {password}\nIs it ok to save?",
-                )
-
-                if is_ok:
-                    pass_file.write(f"{website} | {email} | {password}\n")
-                    website_input.delete(0, "end")
-                    password_input.delete(0, "end")
-                    website_input.focus_set()
+                entry.update(new_data)
+                write_to_file(entry)
+            finally:
+                website_input.focus_set()
+                website_input.delete(0, "end")
+                password_input.delete(0, "end")
 
     # ---------------------------- UI SETUP ------------------------------- #
     window = Tk()
@@ -129,9 +166,11 @@ def pass_manager():
 
     website_label = Label(text="Website:")
     website_label.grid(row=1, column=0, sticky="w")
-    website_input = Entry(width=52)
+    website_input = Entry(width=30)
     website_input.grid(row=1, column=1, columnspan=2, sticky="w")
     website_input.focus_set()
+    website_search = Button(text="Search", width=15, command=search)
+    website_search.grid(row=1, column=2)
 
     email_label = Label(text="Email/Username:")
     email_label.grid(row=2, column=0, sticky="w")
